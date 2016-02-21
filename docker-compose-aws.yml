@@ -1,0 +1,77 @@
+existdb:
+    build: existdb
+    ports:
+        - "8008:8008"
+    volumes:
+        - /data/existdb:/data/existdb
+
+elasticsearch:
+    build: elasticsearch
+    ports:
+        - "9200:9200"
+        - "9300:9300"
+    volumes:
+        - /data/elasticsearch:/data
+
+logstash:
+    build: logstash
+    volumes:
+        - /data/logstash:/data
+    links:
+        - elasticsearch:elasticsearch
+
+tomcat:
+    build: tomcat
+    links:
+        - logstash:logstash
+
+graphdb:
+    build: graphdb
+    ports: 
+        - "8088:8080"
+    volumes:
+        - /data/graphdb:/storage
+    links:
+        - logstash:logstash
+
+memcached:
+    build: memcached
+
+jenkins:
+    build: jenkins
+    ports:
+        - "8080:8080"
+        - "50000:50000"
+    volumes:
+        - /data/jenkins:/var/jenkins_home
+        - /var/run/docker.sock:/var/run/docker.sock
+        - /data/rdf:/rdf
+        - /usr/bin/docker:/usr/bin/docker
+        - /data/api:/storage
+    links:
+        - graphdb:triplestore
+    environment:
+        - HOSTNAME_URL=
+
+api:
+    build: api
+    ports:
+        - "9090:80"
+    links:
+        - graphdb:triplestore
+        - memcached:memcached
+        - logstash:logstash
+    volumes:
+        - /data/api:/storage
+    environment:
+        - FLASK_CONFIG=
+
+kibana:
+    build: kibana
+    ports: 
+        - "5601:5601"
+    links:
+        - elasticsearch:elasticsearch
+        - logstash:logstash
+    environment:
+        - ELASTICSEARCH_URL=
